@@ -1,0 +1,19 @@
+{
+  "name": "claude-code-scheduler",
+  "owner": {
+    "name": "Bryan Young"
+  },
+  "plugins": [
+    {
+      "name": "scheduler",
+      "source": ".",
+      "description": "Schedule recurring Claude Code tasks using native OS schedulers (launchd/crontab). Zero dependencies.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Bryan Young"
+      },
+      "repository": "https://github.com/intertwine/claude-code-scheduler",
+      "license": "MIT"
+    }
+  ]
+}

@@ -11,13 +11,15 @@ Schedule Claude Code tasks to run automatically. Shell and Python 3 only -- no o
 ## Install
 
 ```
-/plugin install intertwine/claude-code-scheduler
+/plugin marketplace add intertwine/claude-code-scheduler
+/plugin install scheduler@claude-code-scheduler
 ```
 
 ## Uninstall
 
 ```
 /plugin uninstall scheduler
+/plugin marketplace remove claude-code-scheduler
 rm -rf ~/.claude-scheduler  # optional: remove task data and logs
 ```
 
