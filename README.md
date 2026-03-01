@@ -1,13 +1,17 @@
+<p align="center">
+  <img src="assets/header.png" alt="Claude Code Scheduler" width="100%">
+</p>
+
 # Claude Code Scheduler
 
-Schedule Claude Code tasks to run automatically. Zero dependencies beyond shell and Python 3.
+Schedule Claude Code tasks to run automatically. Shell and Python 3 only -- no other dependencies.
 
-Inspired by [this tweet](https://x.com/daviddiviny/status/2028210513038180550) — Claude Cowork has scheduled tasks but limited CLI access, Claude Code has full CLI power but no scheduling. This plugin bridges the gap.
+[David Diviny pointed out](https://x.com/daviddiviny/status/2028210513038180550) that Claude Cowork has scheduling but no CLI access, while Claude Code has CLI access but no scheduling. This plugin adds scheduling to Claude Code.
 
 ## Install
 
 ```
-/plugin install bryanyoung/claude-code-scheduler
+/plugin install intertwine/claude-code-scheduler
 ```
 
 ## Uninstall
@@ -19,53 +23,41 @@ rm -rf ~/.claude-scheduler  # optional: remove task data and logs
 
 ## Usage
 
-Talk to Claude naturally:
-
 ```
-You: /schedule Review my code for security issues every weekday at 9am
-You: /schedule List my scheduled tasks
-You: /schedule Run the security review task now
-You: /schedule Pause the security review
-You: /schedule Remove the security review task
-You: /schedule Show me the logs for the security review
+/schedule Review my code for security issues every weekday at 9am
+/schedule List my scheduled tasks
+/schedule Run the security review task now
+/schedule Pause the security review
+/schedule Remove the security review task
+/schedule Show me the logs for the security review
 ```
 
-Or be specific with cron:
+Cron expressions work too:
 
 ```
-You: /schedule Add a task with cron "*/30 9-17 * * 1-5" to check for TODO comments in this project
+/schedule Add a task with cron "*/30 9-17 * * 1-5" to check for TODO comments in this project
 ```
 
-## How It Works
+## How it works
 
-```
-/schedule ─> SKILL.md ─> task-manager.sh ─> ~/.claude-scheduler/tasks/<id>.json
-                         platform-scheduler.sh ─> launchd plist or crontab entry
-                                                       │
-                                                       ▼ (at scheduled time)
-                                                  run-task.sh
-                                                       │
-                                                       ▼
-                                              claude -p "<prompt>"
-                                                       │
-                                                       ▼
-                                              log output + notify
-```
+<p align="center">
+  <img src="assets/architecture.png" alt="Architecture diagram" width="100%">
+</p>
 
-1. You describe what you want scheduled and when
+1. You describe what to schedule and when
 2. Claude creates a task definition and registers it with your OS scheduler
 3. At the scheduled time, launchd (macOS) or cron (Linux) runs the task
-4. The task invokes `claude -p` with your prompt and tool configuration
-5. Output is logged and you get a desktop notification
+4. The task runs `claude -p` with your prompt and tool configuration
+5. Output gets logged and you get a desktop notification
 
 ## Requirements
 
 - Claude Code v1.0.33+
-- macOS or Linux (Windows not supported)
-- Python 3 (ships with macOS and most Linux distributions)
+- macOS or Linux
+- Python 3 (ships with macOS and most Linux distros)
 - `claude` CLI in your PATH
 
-## File Structure
+## File structure
 
 ```
 claude-code-scheduler/
@@ -74,15 +66,15 @@ claude-code-scheduler/
 │   ├── SKILL.md                     # Skill instructions
 │   └── CRON_REFERENCE.md            # Cron syntax reference
 └── scripts/
-    ├── task-manager.sh              # Task CRUD operations
+    ├── task-manager.sh              # Task CRUD
     ├── platform-scheduler.sh        # launchd/crontab management
     ├── run-task.sh                  # Execution wrapper
     └── notify.sh                    # Desktop notifications
 ```
 
-## Data Storage
+## Data storage
 
-All data lives in `~/.claude-scheduler/`:
+Everything goes in `~/.claude-scheduler/`:
 
 ```
 ~/.claude-scheduler/
@@ -94,16 +86,16 @@ All data lives in `~/.claude-scheduler/`:
         └── latest -> 20260301_090000.log
 ```
 
-## Task Configuration
+## Task configuration
 
 | Field | Default | Description |
 |-------|---------|-------------|
-| `name` | (required) | Human-readable task name |
+| `name` | (required) | Task name |
 | `schedule` | (required) | 5-field cron expression |
 | `prompt` | (required) | What Claude should do |
 | `working_directory` | Current dir | Where the task runs |
 | `allowed_tools` | `Read,Grep,Glob` | Tools available during execution |
-| `max_turns` | `10` | Maximum agentic turns per run |
+| `max_turns` | `10` | Max agentic turns per run |
 | `notify` | `true` | Desktop notification on completion |
 
 ## Troubleshooting
@@ -111,41 +103,34 @@ All data lives in `~/.claude-scheduler/`:
 **Task not running?**
 
 ```bash
-# Check if the task is registered with the scheduler
-# macOS:
+# macOS: check if registered
 launchctl list | grep claude-scheduler
 
 # Linux:
 crontab -l | grep claude-scheduler
 ```
 
-**Check task logs:**
+**Check logs:**
 
 ```bash
 cat ~/.claude-scheduler/logs/<task-id>/latest
 ```
 
-**Claude CLI not found during scheduled execution?**
+**`claude` not found during scheduled execution?**
 
-The run script sets a broad PATH, but if `claude` is installed somewhere unusual, check:
+The run script sets a broad PATH, but if `claude` is installed somewhere unusual, find it with `which claude` and make sure that location is in the script's PATH or your shell profile.
 
-```bash
-which claude
-```
+**macOS: task didn't run after sleep?**
 
-And ensure that path is included in the script's PATH or in your shell profile.
-
-**macOS: launchd not running task after sleep?**
-
-launchd runs missed jobs after the machine wakes up. If it's still not working, verify the plist is loaded:
+launchd runs missed jobs after wake. Verify the plist is loaded:
 
 ```bash
 launchctl list | grep claude-scheduler
 ```
 
-## How It Compares
+## Comparison
 
-| | This plugin | jshchnz/claude-code-scheduler | kylemclaren/claude-tasks |
+| | This plugin | [jshchnz/claude-code-scheduler](https://github.com/jshchnz/claude-code-scheduler) | [kylemclaren/claude-tasks](https://github.com/kylemclaren/claude-tasks) |
 |---|---|---|---|
 | Dependencies | Shell + Python 3 | Node.js + TypeScript | Go |
 | Files | 9 | 30+ | 20+ |
@@ -153,7 +138,7 @@ launchctl list | grep claude-scheduler
 | Windows | No | Yes | Yes |
 | Approach | Shell scripts | TypeScript | Go TUI |
 
-Our goal is radical simplicity: 9 files, zero external dependencies, easy to read and modify.
+This plugin is 9 files with no build step. You can read every line of it.
 
 ## License
 
