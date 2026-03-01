@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/header.png" alt="Claude Code Scheduler" width="100%">
+  <img src="assets/header.jpg" alt="Claude Code Scheduler" width="100%">
 </p>
 
 # Claude Code Scheduler
@@ -41,7 +41,7 @@ Cron expressions work too:
 ## How it works
 
 <p align="center">
-  <img src="assets/architecture.png" alt="Architecture diagram" width="100%">
+  <img src="assets/architecture.jpg" alt="Architecture diagram" width="100%">
 </p>
 
 1. You describe what to schedule and when
