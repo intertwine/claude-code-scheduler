@@ -97,27 +97,41 @@ def parse_field(field, key):
 
     return [{key: v} for v in values]
 
-# Build all possible calendar interval combinations
+# Build all possible calendar interval combinations.
+# Cron semantics for day-of-month and day-of-week are OR when both are restricted.
 minute_entries = parse_field(minute, 'Minute')
 hour_entries = parse_field(hour, 'Hour')
 day_entries = parse_field(day, 'Day')
 month_entries = parse_field(month, 'Month')
 weekday_entries = parse_field(weekday, 'Weekday')
 
+# Compose day constraints with cron-compatible OR semantics.
+if day == '*' and weekday == '*':
+    day_week_entries = [{}]
+elif day == '*':
+    day_week_entries = weekday_entries
+elif weekday == '*':
+    day_week_entries = day_entries
+else:
+    day_week_entries = day_entries + weekday_entries
+
 # Merge into combined intervals
 intervals = []
+seen = set()
 for mi in minute_entries:
     for hi in hour_entries:
-        for di in day_entries:
-            for mo in month_entries:
-                for wd in weekday_entries:
-                    merged = {}
-                    merged.update(mi)
-                    merged.update(hi)
-                    merged.update(di)
-                    merged.update(mo)
-                    merged.update(wd)
-                    intervals.append(merged)
+        for mo in month_entries:
+            for dw in day_week_entries:
+                merged = {}
+                merged.update(mi)
+                merged.update(hi)
+                merged.update(mo)
+                merged.update(dw)
+                key = tuple(sorted(merged.items()))
+                if key in seen:
+                    continue
+                seen.add(key)
+                intervals.append(merged)
 
 # Cap at 100 intervals to prevent absurd plists
 if len(intervals) > 100:

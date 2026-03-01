@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  shell-and-regressions:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate plugin metadata JSON
+        run: python3 -m json.tool .claude-plugin/plugin.json > /dev/null
+
+      - name: Bash syntax checks
+        run: |
+          bash -n scripts/task-manager.sh
+          bash -n scripts/platform-scheduler.sh
+          bash -n scripts/run-task.sh
+          bash -n scripts/notify.sh
+          bash -n tests/regression.sh
+
+      - name: Run regression tests
+        run: tests/regression.sh

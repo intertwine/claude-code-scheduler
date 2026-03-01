@@ -48,6 +48,10 @@ prompt="$(read_field prompt "")"
 allowed_tools="$(read_field allowed_tools "Read,Grep,Glob")"
 max_turns="$(read_field max_turns 10)"
 notify="$(read_field notify True)"
+notify_enabled=false
+if [[ "$notify" == "True" || "$notify" == "true" ]]; then
+  notify_enabled=true
+fi
 
 if [[ -z "$prompt" ]]; then
   echo "Error: Task ${task_id} has empty prompt" >&2
@@ -56,15 +60,21 @@ fi
 
 # Verify working directory exists
 if [[ ! -d "$working_dir" ]]; then
-  "${SCRIPT_DIR}/notify.sh" --title "Claude Scheduler" \
-    --message "Task '${name}' failed: directory not found: ${working_dir}" --failure
+  if [[ "$notify_enabled" == "true" ]]; then
+    "${SCRIPT_DIR}/notify.sh" --title "Claude Scheduler" \
+      --message "Task '${name}' failed: directory not found: ${working_dir}" --failure
+  fi
+  echo "Error: directory not found: ${working_dir}" >&2
   exit 1
 fi
 
 # Verify claude CLI is available
 if ! command -v claude &>/dev/null; then
-  "${SCRIPT_DIR}/notify.sh" --title "Claude Scheduler" \
-    --message "Task '${name}' failed: claude CLI not found in PATH" --failure
+  if [[ "$notify_enabled" == "true" ]]; then
+    "${SCRIPT_DIR}/notify.sh" --title "Claude Scheduler" \
+      --message "Task '${name}' failed: claude CLI not found in PATH" --failure
+  fi
+  echo "Error: claude CLI not found in PATH" >&2
   exit 1
 fi
 
@@ -109,7 +119,7 @@ claude -p "$prompt" \
 ln -sf "${timestamp}.log" "${log_dir}/latest"
 
 # Send notification
-if [[ "$notify" == "True" || "$notify" == "true" ]]; then
+if [[ "$notify_enabled" == "true" ]]; then
   if [[ $exit_code -eq 0 ]]; then
     "${SCRIPT_DIR}/notify.sh" --title "Claude Scheduler" \
       --message "Task '${name}' completed successfully" --success

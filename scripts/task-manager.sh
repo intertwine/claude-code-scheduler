@@ -167,41 +167,40 @@ cmd_update() {
     exit 1
   fi
 
-  # Collect update fields as key=value pairs
+  # Collect update fields as key/value argv pairs
   local updates=()
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      --name)          updates+=("name=$2");          shift 2 ;;
-      --schedule)      updates+=("schedule=$2");      shift 2 ;;
-      --schedule-human) updates+=("schedule_human=$2"); shift 2 ;;
-      --working-dir)   updates+=("working_directory=$2"); shift 2 ;;
-      --prompt)        updates+=("prompt=$2");        shift 2 ;;
-      --allowed-tools) updates+=("allowed_tools=$2"); shift 2 ;;
-      --max-turns)     updates+=("max_turns=$2");     shift 2 ;;
-      --notify)        updates+=("notify=$2");        shift 2 ;;
-      --status)        updates+=("status=$2");        shift 2 ;;
+      --name)          updates+=("name" "$2");             shift 2 ;;
+      --schedule)      updates+=("schedule" "$2");         shift 2 ;;
+      --schedule-human) updates+=("schedule_human" "$2");  shift 2 ;;
+      --working-dir)   updates+=("working_directory" "$2"); shift 2 ;;
+      --prompt)        updates+=("prompt" "$2");           shift 2 ;;
+      --allowed-tools) updates+=("allowed_tools" "$2");    shift 2 ;;
+      --max-turns)     updates+=("max_turns" "$2");        shift 2 ;;
+      --notify)        updates+=("notify" "$2");           shift 2 ;;
+      --status)        updates+=("status" "$2");           shift 2 ;;
       *) echo "Unknown option: $1" >&2; exit 1 ;;
     esac
   done
-
-  # Pass updates as newline-separated key=value to Python
-  local updates_str
-  updates_str="$(printf '%s\n' "${updates[@]}")"
 
   $PYTHON -c "
 import json, sys, os
 from datetime import datetime, timezone
 
 task_file = sys.argv[1]
-updates_raw = sys.argv[2].strip().split('\n')
+raw = sys.argv[2:]
 
 with open(task_file) as f:
     task = json.load(f)
 
-for entry in updates_raw:
-    if '=' not in entry:
-        continue
-    key, val = entry.split('=', 1)
+if len(raw) % 2 != 0:
+    print('{\"error\": \"Invalid update arguments\"}', file=sys.stderr)
+    sys.exit(1)
+
+for i in range(0, len(raw), 2):
+    key = raw[i]
+    val = raw[i + 1]
     if key == 'max_turns':
         val = int(val)
     elif key == 'notify':
@@ -216,7 +215,7 @@ with open(tmp, 'w') as f:
 os.rename(tmp, task_file)
 
 print(json.dumps(task, indent=2))
-" "$task_file" "$updates_str"
+" "$task_file" "${updates[@]}"
 }
 
 # --- delete ---
