@@ -1,0 +1,11 @@
+{
+  "name": "scheduler",
+  "version": "1.0.0",
+  "description": "Schedule recurring Claude Code tasks using native OS schedulers (launchd/crontab). Zero dependencies.",
+  "author": {
+    "name": "Bryan Young"
+  },
+  "repository": "https://github.com/bryanyoung/claude-code-scheduler",
+  "license": "MIT",
+  "keywords": ["scheduler", "cron", "automation", "launchd", "crontab", "scheduled-tasks"]
+}
