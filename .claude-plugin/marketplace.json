@@ -6,7 +6,10 @@
   "plugins": [
     {
       "name": "scheduler",
-      "source": ".",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/intertwine/claude-code-scheduler.git"
+      },
       "description": "Schedule recurring Claude Code tasks using native OS schedulers (launchd/crontab). Zero dependencies.",
       "version": "1.0.0",
       "author": {
