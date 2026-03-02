@@ -6,17 +6,24 @@
   "plugins": [
     {
       "name": "scheduler",
-      "source": {
-        "source": "url",
-        "url": "https://github.com/intertwine/claude-code-scheduler.git"
-      },
+      "source": "./",
       "description": "Schedule recurring Claude Code tasks using native OS schedulers (launchd/crontab). Zero dependencies.",
       "version": "1.0.0",
       "author": {
         "name": "Bryan Young"
       },
       "repository": "https://github.com/intertwine/claude-code-scheduler",
-      "license": "MIT"
+      "license": "MIT",
+      "keywords": [
+        "scheduler",
+        "cron",
+        "automation",
+        "launchd",
+        "crontab"
+      ],
+      "skills": [
+        "./skills/schedule"
+      ]
     }
   ]
 }
