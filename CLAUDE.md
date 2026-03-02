@@ -17,6 +17,11 @@ tests/regression.sh             <- Regression tests for known edge cases
 
 Task data lives in `~/.claude-scheduler/tasks/<id>.json`. Logs go to `~/.claude-scheduler/logs/<id>/`.
 
+## Known constraints
+
+- `run-task.sh` cannot be called from within an active Claude session. It invokes `claude -p` which fails as a nested process. The SKILL.md instructs Claude to use the register-then-unregister pattern for "run now" requests instead.
+- Cron/launchd minimum granularity is 1 minute. Sub-minute scheduling is not possible.
+
 ## Key conventions
 
 - All JSON manipulation uses `python3 -c` one-liners (not jq, not sed). This keeps escaping safe.

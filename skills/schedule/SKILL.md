@@ -75,7 +75,13 @@ When the user wants to schedule something:
 5. Call `platform-scheduler.sh register` with the returned task ID
 6. Confirm to the user with the full schedule summary
 
-For the `--prompt` argument, write a clear, detailed prompt describing what Claude should do when the task runs. The prompt should be self-contained since it runs in a fresh session.
+For the `--prompt` argument, write a detailed, self-contained prompt. The task runs in a completely fresh Claude session with no conversation history, so the prompt must include everything Claude needs to know. Be specific about what to do and where to put the output.
+
+Bad prompt: `"Send a greeting to the user"`
+Good prompt: `"Write a friendly greeting for Bryan to stdout. Mention the current day of the week and wish him a productive day."`
+
+Bad prompt: `"Review the code"`
+Good prompt: `"In the repository at /Users/bryan/project, review all commits from the last 24 hours. Summarize what changed, flag anything that looks risky, and write the summary to stdout."`
 
 For `--allowed-tools`, choose appropriate tools based on what the task needs:
 - Read-only tasks: `"Read,Grep,Glob"`
@@ -101,11 +107,34 @@ ${CLAUDE_PLUGIN_ROOT}/scripts/task-manager.sh delete <task-id>
 
 ### Running a task immediately
 
+**IMPORTANT: You CANNOT call `run-task.sh` from within this Claude session.** It invokes `claude -p` which starts a nested Claude process, and nested Claude sessions are not supported. The call will fail.
+
+Instead, to run a task "now":
+1. Create the task with schedule `"* * * * *"` (every minute)
+2. Register it with `platform-scheduler.sh register`
+3. Immediately unregister it with `platform-scheduler.sh unregister`
+
+launchd/cron will have already queued the task for the next minute boundary, so it will fire once and then stop because it's unregistered. Tell the user it will run within the next 60 seconds.
+
 ```bash
-${CLAUDE_PLUGIN_ROOT}/scripts/run-task.sh <task-id>
+# Create, register, then immediately unregister for a one-shot execution
+${CLAUDE_PLUGIN_ROOT}/scripts/task-manager.sh create \
+  --name "One-time task" \
+  --schedule "* * * * *" \
+  --working-dir "$(pwd)" \
+  --prompt "The task prompt"
+
+# Register (queues for next minute boundary)
+${CLAUDE_PLUGIN_ROOT}/scripts/platform-scheduler.sh register <task-id>
+
+# Immediately unregister so it only fires once
+${CLAUDE_PLUGIN_ROOT}/scripts/platform-scheduler.sh unregister <task-id>
 ```
 
-This runs the task in the foreground so the user can see output.
+The user can check the result afterward with:
+```bash
+cat ~/.claude-scheduler/logs/<task-id>/latest
+```
 
 ### Pausing a task
 
@@ -137,8 +166,10 @@ Or list all log files:
 ls -la ~/.claude-scheduler/logs/<task-id>/
 ```
 
-## Important Notes
+## Important notes
 
+- **Never call `run-task.sh` from this session.** It starts a nested `claude -p` process which will fail. Use the register-then-unregister pattern for immediate execution.
+- Cron/launchd minimum granularity is 1 minute. You cannot schedule anything with sub-minute precision.
 - Tasks run with the user's system permissions
 - The `claude` CLI must be installed and in PATH for scheduled execution
 - Desktop notifications are enabled by default
