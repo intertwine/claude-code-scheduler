@@ -48,9 +48,23 @@ prompt="$(read_field prompt "")"
 allowed_tools="$(read_field allowed_tools "Read,Grep,Glob")"
 max_turns="$(read_field max_turns 10)"
 notify="$(read_field notify True)"
+one_shot="$(read_field one_shot False)"
 notify_enabled=false
 if [[ "$notify" == "True" || "$notify" == "true" ]]; then
   notify_enabled=true
+fi
+
+# For one-shot tasks, use a lock to prevent concurrent runs
+# (launchd may fire the schedule while the start-triggered run is still going)
+if [[ "$one_shot" == "True" || "$one_shot" == "true" ]]; then
+  lock_dir="${SCHEDULER_DIR}/locks"
+  mkdir -p "$lock_dir"
+  lock_file="${lock_dir}/${task_id}.lock"
+  if ! (set -C; echo $$ > "$lock_file") 2>/dev/null; then
+    echo "Task ${task_id} is already running (one-shot lock), skipping." >&2
+    exit 0
+  fi
+  trap "rm -f '${lock_file}'" EXIT
 fi
 
 if [[ -z "$prompt" ]]; then
@@ -143,6 +157,12 @@ if [[ "$notify_enabled" == "true" ]]; then
       --subtitle "✗ ${name}" \
       --message "${output_snippet:-Failed (exit code ${exit_code})}" --failure
   fi
+fi
+
+# One-shot cleanup: unregister from scheduler and mark completed
+if [[ "$one_shot" == "True" || "$one_shot" == "true" ]]; then
+  "${SCRIPT_DIR}/platform-scheduler.sh" unregister "$task_id" > /dev/null 2>&1 || true
+  "${SCRIPT_DIR}/task-manager.sh" update "$task_id" --status completed > /dev/null 2>&1 || true
 fi
 
 exit $exit_code

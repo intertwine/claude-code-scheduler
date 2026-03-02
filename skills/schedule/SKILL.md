@@ -49,6 +49,9 @@ ${CLAUDE_PLUGIN_ROOT}/scripts/platform-scheduler.sh register <task-id>
 # Unregister (remove from scheduler)
 ${CLAUDE_PLUGIN_ROOT}/scripts/platform-scheduler.sh unregister <task-id>
 
+# Force immediate execution (macOS: launchctl start; Linux: no-op, cron fires within 60s)
+${CLAUDE_PLUGIN_ROOT}/scripts/platform-scheduler.sh start <task-id>
+
 # Check registration status
 ${CLAUDE_PLUGIN_ROOT}/scripts/platform-scheduler.sh status <task-id>
 
@@ -61,6 +64,8 @@ ${CLAUDE_PLUGIN_ROOT}/scripts/platform-scheduler.sh status-all
 ```bash
 ${CLAUDE_PLUGIN_ROOT}/scripts/run-task.sh <task-id>
 ```
+
+Note: One-shot tasks (created with `--one-shot true`) automatically unregister from the scheduler and mark themselves as completed after execution.
 
 ## Operations
 
@@ -110,27 +115,28 @@ ${CLAUDE_PLUGIN_ROOT}/scripts/task-manager.sh delete <task-id>
 **IMPORTANT: You CANNOT call `run-task.sh` from within this Claude session.** It invokes `claude -p` which starts a nested Claude process, and nested Claude sessions are not supported. The call will fail.
 
 Instead, to run a task "now":
-1. Create the task with schedule `"* * * * *"` (every minute)
+1. Create the task with `--one-shot true` and schedule `"* * * * *"`
 2. Register it with `platform-scheduler.sh register`
-3. Wait 5 seconds for launchd/cron to pick up the job
-4. Unregister it with `platform-scheduler.sh unregister` so it only fires once
+3. Force immediate execution with `platform-scheduler.sh start`
 
-**You must wait before unregistering.** If you unregister immediately, launchd may not have loaded the job yet and it will never fire. A 5-second sleep is sufficient.
+The `start` command calls `launchctl start` on macOS to trigger the job immediately via launchd (not as a nested process). On Linux, cron will fire within 60 seconds.
 
-Tell the user the task will run within the next 60 seconds. They'll get a desktop notification with the output when it completes.
+The task automatically cleans up after itself: `run-task.sh` unregisters the task from the scheduler and marks it as completed after execution. A lock file prevents duplicate runs.
+
+Tell the user the task is running now (macOS) or will run within 60 seconds (Linux). They'll get a desktop notification with the output when it completes.
 
 ```bash
-# Create the task
+# Create a one-shot task
 ${CLAUDE_PLUGIN_ROOT}/scripts/task-manager.sh create \
   --name "One-time task" \
   --schedule "* * * * *" \
+  --one-shot true \
   --working-dir "$(pwd)" \
   --prompt "The task prompt"
 
-# Register, wait for launchd/cron to pick it up, then unregister
+# Register and start immediately
 ${CLAUDE_PLUGIN_ROOT}/scripts/platform-scheduler.sh register <task-id>
-sleep 5
-${CLAUDE_PLUGIN_ROOT}/scripts/platform-scheduler.sh unregister <task-id>
+${CLAUDE_PLUGIN_ROOT}/scripts/platform-scheduler.sh start <task-id>
 ```
 
 The user can check the result afterward with:

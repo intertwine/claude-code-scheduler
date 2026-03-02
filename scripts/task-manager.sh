@@ -29,7 +29,7 @@ PYTHON="$(find_python)"
 # --- create ---
 cmd_create() {
   local name="" schedule="" schedule_human="" working_dir="" prompt=""
-  local allowed_tools="Read,Grep,Glob" max_turns=10 notify=true
+  local allowed_tools="Read,Grep,Glob" max_turns=10 notify=true one_shot=false
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -41,6 +41,7 @@ cmd_create() {
       --allowed-tools) allowed_tools="$2"; shift 2 ;;
       --max-turns)    max_turns="$2";     shift 2 ;;
       --notify)       notify="$2";        shift 2 ;;
+      --one-shot)     one_shot="$2";      shift 2 ;;
       *) echo "Unknown option: $1" >&2; exit 1 ;;
     esac
   done
@@ -73,15 +74,16 @@ task = {
     'allowed_tools': sys.argv[7],
     'max_turns': int(sys.argv[8]),
     'notify': sys.argv[9].lower() == 'true',
-    'created_at': sys.argv[10],
-    'updated_at': sys.argv[10],
+    'one_shot': sys.argv[10].lower() == 'true',
+    'created_at': sys.argv[11],
+    'updated_at': sys.argv[11],
     'status': 'active'
 }
-with open(sys.argv[11], 'w') as f:
+with open(sys.argv[12], 'w') as f:
     json.dump(task, f, indent=2)
 print(json.dumps(task, indent=2))
 " "$id" "$name" "$schedule" "$schedule_human" "$working_dir" "$prompt" \
-  "$allowed_tools" "$max_turns" "$notify" "$now" "$task_file"
+  "$allowed_tools" "$max_turns" "$notify" "$one_shot" "$now" "$task_file"
 }
 
 # --- list ---

@@ -289,6 +289,27 @@ status_crontab() {
   echo "{\"task_id\": \"${task_id}\", \"platform\": \"linux\", \"registered\": ${registered}}"
 }
 
+# --- start (force immediate execution) ---
+
+start_launchd() {
+  local task_id="$1"
+  local label="${PLIST_PREFIX}.${task_id}"
+
+  if ! launchctl list "$label" &>/dev/null; then
+    echo "{\"error\": \"Task ${task_id} is not loaded. Register it first.\"}" >&2
+    exit 1
+  fi
+
+  launchctl start "$label"
+  echo "{\"task_id\": \"${task_id}\", \"platform\": \"darwin\", \"started\": true}"
+}
+
+start_crontab() {
+  local task_id="$1"
+  # crontab has no force-start — job will fire at the next minute boundary
+  echo "{\"task_id\": \"${task_id}\", \"platform\": \"linux\", \"started\": false, \"note\": \"cron will fire within 60 seconds\"}"
+}
+
 # --- dispatch ---
 
 cmd_register() {
@@ -318,6 +339,24 @@ cmd_unregister() {
   case "$platform" in
     darwin) unregister_launchd "$task_id" ;;
     linux)  unregister_crontab "$task_id" ;;
+  esac
+}
+
+cmd_start() {
+  local task_id="$1"
+  local task_file="${TASKS_DIR}/${task_id}.json"
+
+  if [[ ! -f "$task_file" ]]; then
+    echo "{\"error\": \"Task not found: ${task_id}\"}" >&2
+    exit 1
+  fi
+
+  local platform
+  platform="$(detect_platform)"
+
+  case "$platform" in
+    darwin) start_launchd "$task_id" ;;
+    linux)  start_crontab "$task_id" ;;
   esac
 }
 
@@ -357,7 +396,7 @@ cmd_status_all() {
 
 # --- main ---
 if [[ $# -lt 1 ]]; then
-  echo "Usage: platform-scheduler.sh {register|unregister|status|status-all} [task-id]" >&2
+  echo "Usage: platform-scheduler.sh {register|unregister|start|status|status-all} [task-id]" >&2
   exit 1
 fi
 
@@ -366,6 +405,7 @@ command="$1"; shift
 case "$command" in
   register)    cmd_register "$1" ;;
   unregister)  cmd_unregister "$1" ;;
+  start)       cmd_start "$1" ;;
   status)      cmd_status "$1" ;;
   status-all)  cmd_status_all ;;
   *)
