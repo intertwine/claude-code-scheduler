@@ -112,22 +112,24 @@ ${CLAUDE_PLUGIN_ROOT}/scripts/task-manager.sh delete <task-id>
 Instead, to run a task "now":
 1. Create the task with schedule `"* * * * *"` (every minute)
 2. Register it with `platform-scheduler.sh register`
-3. Immediately unregister it with `platform-scheduler.sh unregister`
+3. Wait 5 seconds for launchd/cron to pick up the job
+4. Unregister it with `platform-scheduler.sh unregister` so it only fires once
 
-launchd/cron will have already queued the task for the next minute boundary, so it will fire once and then stop because it's unregistered. Tell the user it will run within the next 60 seconds.
+**You must wait before unregistering.** If you unregister immediately, launchd may not have loaded the job yet and it will never fire. A 5-second sleep is sufficient.
+
+Tell the user the task will run within the next 60 seconds. They'll get a desktop notification with the output when it completes.
 
 ```bash
-# Create, register, then immediately unregister for a one-shot execution
+# Create the task
 ${CLAUDE_PLUGIN_ROOT}/scripts/task-manager.sh create \
   --name "One-time task" \
   --schedule "* * * * *" \
   --working-dir "$(pwd)" \
   --prompt "The task prompt"
 
-# Register (queues for next minute boundary)
+# Register, wait for launchd/cron to pick it up, then unregister
 ${CLAUDE_PLUGIN_ROOT}/scripts/platform-scheduler.sh register <task-id>
-
-# Immediately unregister so it only fires once
+sleep 5
 ${CLAUDE_PLUGIN_ROOT}/scripts/platform-scheduler.sh unregister <task-id>
 ```
 

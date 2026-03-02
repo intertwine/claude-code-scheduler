@@ -97,14 +97,28 @@ log_file="${log_dir}/${timestamp}.log"
   echo ""
 } > "$log_file"
 
-# Execute claude
+# Execute claude and capture output separately for notification
+output_tmp="$(mktemp)"
 exit_code=0
 cd "$working_dir"
 claude -p "$prompt" \
   --allowedTools "$allowed_tools" \
   --max-turns "$max_turns" \
   --output-format text \
-  >> "$log_file" 2>&1 || exit_code=$?
+  > "$output_tmp" 2>&1 || exit_code=$?
+
+# Append captured output to log
+cat "$output_tmp" >> "$log_file"
+
+# Extract snippet for notification (first 200 chars, collapsed to one line)
+output_snippet=""
+if [[ -s "$output_tmp" ]]; then
+  output_snippet="$(head -c 200 "$output_tmp" | tr '\n' ' ' | sed 's/  */ /g; s/^ *//; s/ *$//')"
+  if [[ "$(wc -c < "$output_tmp")" -gt 200 ]]; then
+    output_snippet="${output_snippet}..."
+  fi
+fi
+rm -f "$output_tmp"
 
 # Log footer
 {
@@ -118,14 +132,16 @@ claude -p "$prompt" \
 # Update latest symlink
 ln -sf "${timestamp}.log" "${log_dir}/latest"
 
-# Send notification
+# Send notification with output snippet
 if [[ "$notify_enabled" == "true" ]]; then
   if [[ $exit_code -eq 0 ]]; then
     "${SCRIPT_DIR}/notify.sh" --title "Claude Scheduler" \
-      --message "Task '${name}' completed successfully" --success
+      --subtitle "✓ ${name}" \
+      --message "${output_snippet:-Completed successfully}" --success
   else
     "${SCRIPT_DIR}/notify.sh" --title "Claude Scheduler" \
-      --message "Task '${name}' failed (exit code ${exit_code})" --failure
+      --subtitle "✗ ${name}" \
+      --message "${output_snippet:-Failed (exit code ${exit_code})}" --failure
   fi
 fi
 
